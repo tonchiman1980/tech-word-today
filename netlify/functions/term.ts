@@ -9,21 +9,18 @@ export default async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers });
 
   try {
-    const apiKey = process.env.GEMINI_API_KEY?.trim(); // 空白を自動除去
+    const apiKey = process.env.GEMINI_API_KEY?.trim();
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: "APIキーがNetlifyに設定されていません。" }), { status: 500, headers });
+      return new Response(JSON.stringify({ error: "APIキーが設定されていません。" }), { status: 500, headers });
     }
 
-    // Google APIに直接リクエストを送る
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // ★ 修正ポイント: v1beta ではなく v1（安定版）を使用します
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
     
     const body = {
       contents: [{
-        parts: [{ text: "IT用語を1つ選び、その『用語名』と『30文字程度の解説』を日本語のJSON形式で返してください。例: {\"term\": \"API\", \"description\": \"機能を共有する仕組み。\"}" }]
-      }],
-      generationConfig: {
-        responseMimeType: "application/json"
-      }
+        parts: [{ text: "IT・テック用語を1つ選び、その『用語名』と『30文字程度の解説』を日本語のJSON形式で返してください。例: {\"term\": \"API\", \"description\": \"機能を共有する仕組み。\"}" }]
+      }]
     };
 
     const response = await fetch(url, {
@@ -35,11 +32,11 @@ export default async (req: Request) => {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error("Google API Error:", data);
-      return new Response(JSON.stringify({ error: "Google APIがエラーを返しました", details: data }), { status: response.status, headers });
+      console.error("Google API Error (v1):", data);
+      return new Response(JSON.stringify({ error: "Google APIエラー", details: data }), { status: response.status, headers });
     }
 
-    // AIの回答部分を取り出す
+    // AIの回答を取り出す
     const aiText = data.candidates[0].content.parts[0].text;
     return new Response(aiText, { status: 200, headers });
 
