@@ -1,5 +1,3 @@
-import * as GoogleAI from "@google/generative-ai";
-
 export default async (req: Request) => {
   const headers = {
     "Content-Type": "application/json",
@@ -11,31 +9,42 @@ export default async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers });
 
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY?.trim(); // 空白を自動除去
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: "APIキーが設定されていません。" }), { status: 500, headers });
+      return new Response(JSON.stringify({ error: "APIキーがNetlifyに設定されていません。" }), { status: 500, headers });
     }
 
-    const genAI = new GoogleAI.GoogleGenerativeAI(apiKey);
+    // Google APIに直接リクエストを送る
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
     
-    // モデル名を 'gemini-1.5-flash-latest' に変更（より確実に動く名前です）
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash-latest" 
+    const body = {
+      contents: [{
+        parts: [{ text: "IT用語を1つ選び、その『用語名』と『30文字程度の解説』を日本語のJSON形式で返してください。例: {\"term\": \"API\", \"description\": \"機能を共有する仕組み。\"}" }]
+      }],
+      generationConfig: {
+        responseMimeType: "application/json"
+      }
+    };
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
     });
 
-    const prompt = "IT・テック用語を1つ選び、その『用語名』と『30文字程度の解説』を日本語のJSON形式で返してください。例: {\"term\": \"API\", \"description\": \"機能を共有する仕組み。\"}";
+    const data = await response.json();
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+    if (!response.ok) {
+      console.error("Google API Error:", data);
+      return new Response(JSON.stringify({ error: "Google APIがエラーを返しました", details: data }), { status: response.status, headers });
+    }
 
-    return new Response(text, { status: 200, headers });
+    // AIの回答部分を取り出す
+    const aiText = data.candidates[0].content.parts[0].text;
+    return new Response(aiText, { status: 200, headers });
 
   } catch (error: any) {
-    console.error("Error details:", error);
-    return new Response(JSON.stringify({ 
-      error: error.message,
-      suggestion: "Google AI StudioでAPIキーが有効か確認してください。"
-    }), { status: 500, headers });
+    console.error("Function Error:", error);
+    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers });
   }
 };
