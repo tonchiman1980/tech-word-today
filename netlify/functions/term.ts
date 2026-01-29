@@ -1,12 +1,10 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI } from "@google/generative-ai";
 
-// AI Studioでテストした「あのルール」をここに組み込みました
 const SYSTEM_INSTRUCTION = `あなたは最先端テクノロジーと株式投資の専門家です。
 ユーザーがボタンを押すたびに、今日知っておくべき重要なテック用語を「1つだけ」厳選して、以下のJSON形式で返してください。
 余計な挨拶や装飾文字は一切含まず、純粋なJSONデータのみを出力してください。`;
 
 export default async (req: Request) => {
-  // CORS対策：iPhone（ブラウザ）からのアクセスを許可する設定
   const headers = {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": "*",
@@ -27,7 +25,6 @@ export default async (req: Request) => {
     const response = await result.response;
     const text = response.text();
 
-    // AIが万が一余計な文字を出しても、JSON部分だけを抜き出す処理
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     const jsonData = jsonMatch ? jsonMatch[0] : text;
 
