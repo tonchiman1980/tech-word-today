@@ -10,29 +10,32 @@ export default async (req: Request) => {
 
   if (req.method === "OPTIONS") return new Response(null, { headers });
 
-  console.log("--- Functions 実行開始 ---"); // これがログに出るはず
-
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      console.error("エラー: APIキーがNetlifyに設定されていません");
-      return new Response(JSON.stringify({ error: "API_KEY_MISSING" }), { status: 500, headers });
+      return new Response(JSON.stringify({ error: "APIキーが設定されていません。" }), { status: 500, headers });
     }
 
     const genAI = new GoogleAI.GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-    const result = await model.generateContent("テック用語を1つJSON形式で返して。");
-    const text = result.response.text();
     
-    console.log("Geminiからの回答:", text); // これがログに出るはず
+    // モデル名を 'gemini-1.5-flash-latest' に変更（より確実に動く名前です）
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-1.5-flash-latest" 
+    });
 
-    return new Response(text, { headers });
+    const prompt = "IT・テック用語を1つ選び、その『用語名』と『30文字程度の解説』を日本語のJSON形式で返してください。例: {\"term\": \"API\", \"description\": \"機能を共有する仕組み。\"}";
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+
+    return new Response(text, { status: 200, headers });
+
   } catch (error: any) {
-    // ここでエラーの内容をログ（黒い画面）に書き出します
-    console.error("実行中にエラーが発生しました:", error.message);
-    console.error("エラーの詳細:", error);
-    
-    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers });
+    console.error("Error details:", error);
+    return new Response(JSON.stringify({ 
+      error: error.message,
+      suggestion: "Google AI StudioでAPIキーが有効か確認してください。"
+    }), { status: 500, headers });
   }
 };
