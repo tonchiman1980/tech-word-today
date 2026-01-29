@@ -1,7 +1,5 @@
 import * as GoogleAI from "@google/generative-ai";
 
-const SYSTEM_INSTRUCTION = `あなたはテック投資の専門家です。今日知っておくべき用語を1つ選び、JSON形式 {"word": "用語名", "meaning": "意味", "invest_tip": "投資への活かし方"} で返してください。`;
-
 export default async (req: Request) => {
   const headers = {
     "Content-Type": "application/json",
@@ -9,29 +7,32 @@ export default async (req: Request) => {
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
   };
+
   if (req.method === "OPTIONS") return new Response(null, { headers });
 
+  console.log("--- Functions 実行開始 ---"); // これがログに出るはず
+
   try {
-    const apiKey = process.env.GEMINI_API_KEY || "";
-    if (!apiKey) throw new Error("APIキーが設定されていません");
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.error("エラー: APIキーがNetlifyに設定されていません");
+      return new Response(JSON.stringify({ error: "API_KEY_MISSING" }), { status: 500, headers });
+    }
 
-    // ライブラリの読み込み方を最も安全な方法に変更
     const genAI = new GoogleAI.GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash", // より安定しているモデル名に変更
-      systemInstruction: SYSTEM_INSTRUCTION 
-    });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    const result = await model.generateContent("テック用語を1つ出力してください。");
-    const response = await result.response;
-    const text = response.text();
+    const result = await model.generateContent("テック用語を1つJSON形式で返して。");
+    const text = result.response.text();
+    
+    console.log("Geminiからの回答:", text); // これがログに出るはず
 
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    const jsonData = jsonMatch ? jsonMatch[0] : text;
-
-    return new Response(jsonData, { headers });
+    return new Response(text, { headers });
   } catch (error: any) {
-    // エラーの内容を画面に表示するようにしました
+    // ここでエラーの内容をログ（黒い画面）に書き出します
+    console.error("実行中にエラーが発生しました:", error.message);
+    console.error("エラーの詳細:", error);
+    
     return new Response(JSON.stringify({ error: error.message }), { status: 500, headers });
   }
 };
