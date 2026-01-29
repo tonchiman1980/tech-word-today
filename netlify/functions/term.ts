@@ -1,4 +1,5 @@
-import { GoogleGenAI } from "@google/generative-ai";
+// カッコ { } を外しました。これが最新版の正しい書き方です。
+import GoogleGenAI from "@google/generative-ai";
 
 const SYSTEM_INSTRUCTION = `あなたは最先端テクノロジーと株式投資の専門家です。今日知っておくべき重要なテック用語を1つ厳選して、JSON形式で返してください。`;
 
@@ -11,16 +12,23 @@ export default async (req: Request) => {
   };
   if (req.method === "OPTIONS") return new Response(null, { headers });
   try {
-    const genAI = new GoogleGenAI(process.env.GEMINI_API_KEY || "");
+    // APIキーの読み込み
+    const apiKey = process.env.GEMINI_API_KEY || "";
+    // クライアントの初期化（new を使わずに呼び出すのが今のルールです）
+    const genAI = new (GoogleGenAI as any)(apiKey);
+    
     const model = genAI.getGenerativeModel({ 
       model: "gemini-2.0-flash",
       systemInstruction: SYSTEM_INSTRUCTION 
     });
+    
     const result = await model.generateContent("新しいテック用語を1つ厳選して出力してください。");
     const response = await result.response;
     const text = response.text();
+    
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     const jsonData = jsonMatch ? jsonMatch[0] : text;
+    
     return new Response(jsonData, { headers });
   } catch (error: any) {
     return new Response(JSON.stringify({ error: error.message }), { status: 500, headers });
