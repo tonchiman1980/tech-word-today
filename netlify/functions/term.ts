@@ -14,8 +14,8 @@ export default async (req: Request) => {
       return new Response(JSON.stringify({ error: "APIキーが設定されていません。" }), { status: 500, headers });
     }
 
-    // URLを最も標準的な形式に固定します
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // ★ 修正ポイント: URLを「v1beta」から「v1」に変更
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
     
     const body = {
       contents: [{
@@ -32,13 +32,15 @@ export default async (req: Request) => {
     const data = await response.json();
 
     if (!response.ok) {
-      // ★ここが重要！Googleからのエラーメッセージをフロントエンドに送るようにしました
-      const errorMessage = data.error?.message || "Google APIで不明なエラーが発生しました";
-      console.error("Google Error Details:", data);
+      // エラーが発生した場合は、Googleからのメッセージをそのまま返す
+      const errorMessage = data.error?.message || "Google APIエラー";
       return new Response(JSON.stringify({ error: errorMessage }), { status: response.status, headers });
     }
 
+    // 成功時：AIの回答（テキスト）を取り出す
     const aiText = data.candidates[0].content.parts[0].text;
+    
+    // AIが ```json ... ``` のような装飾をつけてきた場合、それを取り除く
     const cleanJson = aiText.replace(/```json/g, "").replace(/```/g, "").trim();
 
     return new Response(cleanJson, { status: 200, headers });
