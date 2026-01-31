@@ -11,15 +11,15 @@ export default async (req: Request) => {
   try {
     const apiKey = process.env.GEMINI_API_KEY?.trim();
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: "APIキーが設定されていません。" }), { status: 500, headers });
+      return new Response(JSON.stringify({ error: "APIキーがNetlifyに設定されていません。" }), { status: 500, headers });
     }
 
-    // ★ 修正ポイント: v1beta ではなく v1（安定版）を使用します
+    // チェッカーで成功したのと同じ「v1」のURLを使用
     const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
     
     const body = {
       contents: [{
-        parts: [{ text: "IT・テック用語を1つ選び、その『用語名』と『30文字程度の解説』を日本語のJSON形式で返してください。例: {\"term\": \"API\", \"description\": \"機能を共有する仕組み。\"}" }]
+        parts: [{ text: "IT・テック用語を1つ選び、その『用語名』と『30文字程度の解説』を日本語のJSON形式で返してください。返答は純粋なJSONのみにしてください。" }]
       }]
     };
 
@@ -32,13 +32,17 @@ export default async (req: Request) => {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error("Google API Error (v1):", data);
+      console.error("Google Error:", data);
       return new Response(JSON.stringify({ error: "Google APIエラー", details: data }), { status: response.status, headers });
     }
 
     // AIの回答を取り出す
     const aiText = data.candidates[0].content.parts[0].text;
-    return new Response(aiText, { status: 200, headers });
+
+    // もしAIが余計な記号（```jsonなど）をつけてきた場合のお掃除
+    const cleanJson = aiText.replace(/```json/g, "").replace(/```/g, "").trim();
+
+    return new Response(cleanJson, { status: 200, headers });
 
   } catch (error: any) {
     console.error("Function Error:", error);
